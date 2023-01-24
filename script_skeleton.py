@@ -3,6 +3,16 @@ import sys
 import datetime
 
 
+def write_log(message, logpath):
+    with open(logpath, 'a') as f:
+        f.write(message)
+def write_startup_message(message, logpath):
+    write_log("============================================================")
+    write_log(message)
+
+def send_email(script_name, message, job_log):
+    pass
+
 def initialize():
     curr_date = datetime.datetime.now().strftime("%y%m%d")
     util_dir = os.path.join(os.environ['HOME'], 'utils')
@@ -75,12 +85,48 @@ def backup_files():
 def finalize():
     pass
 
-def process_messages(error_code, database=None):
-    pass
+def process_messages(error_code, sql_script=None,database=None):
+    if error_code == 0:
+        send_email(sys.argv[0], "Completed Successfully", job_log)
+    elif error_code == 1:
+        write_log("ERROR: Setting up UDB environment", job_log)
+        send_email(sys.argv[0], "ERROR: Setting up UDB environment", job_log)
+        exit(1)
+    elif error_code == 2:
+        write_log("ERROR: Loading wholesale file", job_log)
+        send_email(sys.argv[0], "ERROR: Loading wholesale file", job_log)
+        exit(1)
+    elif error_code == 3:
+        write_log(f"ERROR: Connecting to database {database}", job_log)
+        write_log("Aborting ...", job_log)
+        send_email(sys.argv[0], f"ERROR: Connecting to database {database}", job_log)
+        exit(1)
+    elif error_code == 4:
+        write_log(f"ERROR: Running {sql_script}", job_log)
+        write_log("Aborting ...", job_log)
+        send_email(sys.argv[0], f"ERROR: Running {sql_script}", job_log)
+        exit(1)
+    elif error_code == 5:
+        write_log("ERROR: Running Process_Wholesale.sql", job_log)
+        write_log("Aborting ...", job_log)
+        send_email(sys.argv[0], "ERROR: Running Process_Wholesale.sql", job_log)
+        exit(1)
+    elif error_code == 6:
+        write_log("ERROR: Encrypting the file", job_log)
+        write_log("Aborting ...", job_log)
+        send_email(sys.argv[0], "ERROR: Encrypting the file", job_log)
+        exit(1)
+    elif error_code == 7:
+        write_log("ERROR: FTP the file to Axway", job_log)
+        write_log("Aborting ...", job_log)
+        send_email(sys.argv[0], "ERROR: FTP the file to Axway", job_log)
+        exit(1)
+    elif error_code == 8:
+        write_log("ERROR: FTP the file to W drive", job_log)
+        write_log("Aborting ...", job_log)
+        send_email(sys.argv[0], "ERROR: FTP the file to W drive", job_log)
+        exit(1)
 
-def append_to_log(message):
-    with open(job_log, 'a') as f:
-        f.write(message)
 
 if __name__ == '__main__':
     job_log = "joblog"  # remove
@@ -105,7 +151,7 @@ if __name__ == '__main__':
                 wait_for_file()
             func()
         else:
-            append_to_log("Skipping Step: {}\n".format(steps[i]))
+            write_log("Skipping Step: {}\n".format(steps[i]), job_log)
 
     finalize()
     sys.exit(0)

@@ -345,7 +345,7 @@ EncryptBillingFile()
   $utilDir/Encrypt $dataDir/CVP_monthly.csv
 
   if [ $? -ge 1 ]
-    then ProcessMessages 5
+    then ProcessMessages 6
   fi
 
   $utilDir/WriteLog "EncryptBillingFile Ended" $/$jobLog
@@ -473,69 +473,69 @@ Finalize()
 }
 
 # ---- Script starts here ----
-if [ $# -eq 0 ]
-  then skipstep=0
-  else skipstep=$1
-fi
+#if [ $# -eq 0 ]
+#  then skipstep=0
+#  else skipstep=$1
+#fi
 
 Initialize $1
 
 
-if [ $skipstep -le 1 ]
-  then WaitForFile
-      LoadWholesaleFile
-  else $utilDir/WriteLog "Skipping Step: LoadWholesaleFile" $/$jobLog
-fi
-
-if [ $skipstep -le 2 ]
-  then LoadDealersInfo
-  else $utilDir/WriteLog "Skipping Step: LoadDealersInfo" $/$jobLog
-fi
-
-if [ $skipstep -le 3 ]
-  then ProcessWholesaleFile
-  else $utilDir/WriteLog "Skipping Step: ProcessWholesaleFile" $/$jobLog
-fi
-
-if [ $skipstep -le 4 ]
-  then BackupTransactions
-  else $utilDir/WriteLog "Skipping Step: BackupTransactions" $/$jobLog
-fi
-
-if [ $skipstep -le 5 ]
-  then UpdateTransactions
-  else $utilDir/WriteLog "Skipping Step: UpdateTransactions" $/$jobLog
-fi
-
-if [ $skipstep -le 6 ]
-  then CreateBillingFile
-  else $utilDir/WriteLog "Skipping Step: CreateBillingFile" $/$jobLog
-fi
-
-if [ $skipstep -le 7 ]
-  then CreateAccountingReport
-  else $utilDir/WriteLog "Skipping Step: CreateAccountingReport" $/$jobLog
-fi
-
-if [ $skipstep -le 8 ]
-  then EncryptBillingFile
-  else $utilDir/WriteLog "Skipping Step: EncryptBillingFile" $/$jobLog
-fi
-
-if [ $skipstep -le 9 ]
-  then SendBillingFile
-  else $utilDir/WriteLog "Skipping Step: SendBillingFile" $/$jobLog
-fi
-
-if [ $skipstep -le 10 ]
-  then SendReports
-  else $utilDir/WriteLog "Skipping Step: SendAccountingReport" $/$jobLog
-fi
-
-if [ $skipstep -le 11 ]
-  then BackupFiles
-  else $utilDir/WriteLog "Skipping Step: BackupFiles" $/$jobLog
-fi
-
-Finalize
-exit 0
+#if [ $skipstep -le 1 ]
+#  then WaitForFile
+#      LoadWholesaleFile
+#  else $utilDir/WriteLog "Skipping Step: LoadWholesaleFile" $/$jobLog
+#fi
+#
+#if [ $skipstep -le 2 ]
+#  then LoadDealersInfo
+#  else $utilDir/WriteLog "Skipping Step: LoadDealersInfo" $/$jobLog
+#fi
+#
+#if [ $skipstep -le 3 ]
+#  then ProcessWholesaleFile
+#  else $utilDir/WriteLog "Skipping Step: ProcessWholesaleFile" $/$jobLog
+#fi
+#
+#if [ $skipstep -le 4 ]
+#  then BackupTransactions
+#  else $utilDir/WriteLog "Skipping Step: BackupTransactions" $/$jobLog
+#fi
+#
+#if [ $skipstep -le 5 ]
+#  then UpdateTransactions
+#  else $utilDir/WriteLog "Skipping Step: UpdateTransactions" $/$jobLog
+#fi
+#
+#if [ $skipstep -le 6 ]
+#  then CreateBillingFile
+#  else $utilDir/WriteLog "Skipping Step: CreateBillingFile" $/$jobLog
+#fi
+#
+#if [ $skipstep -le 7 ]
+#  then CreateAccountingReport
+#  else $utilDir/WriteLog "Skipping Step: CreateAccountingReport" $/$jobLog
+#fi
+#
+#if [ $skipstep -le 8 ]
+#  then EncryptBillingFile
+#  else $utilDir/WriteLog "Skipping Step: EncryptBillingFile" $/$jobLog
+#fi
+#
+#if [ $skipstep -le 9 ]
+#  then SendBillingFile
+#  else $utilDir/WriteLog "Skipping Step: SendBillingFile" $/$jobLog
+#fi
+#
+#if [ $skipstep -le 10 ]
+#  then SendReports
+#  else $utilDir/WriteLog "Skipping Step: SendAccountingReport" $/$jobLog
+#fi
+#
+#if [ $skipstep -le 11 ]
+#  then BackupFiles
+#  else $utilDir/WriteLog "Skipping Step: BackupFiles" $/$jobLog
+#fi
+#
+#Finalize
+#exit 0
