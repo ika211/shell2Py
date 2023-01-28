@@ -208,7 +208,7 @@ LoadDealersInfo()
     then ProcessMessages 3
   fi
 
-  db2 -stf $sqlDir/Extract_Dealers.sql -x -r $dataDir/dealers_infos.txt > $/null.log
+  db2 -stf $sqlDir/Extract_Dealers.sql -x -r $dataDir/dealers_infos.txt > $/$$.log
   cat $/$$.log >> $/$jobLog
   $utilDir/CheckSqlError "SQLSTATE" "00000|02000" $/$$.log
   if [ $? -ge 1 ]
@@ -239,7 +239,7 @@ LoadDealersInfo()
   #### Call update CVP dealer stored procedure
   db2 -stvf $sqlDir/Update_CVP_Dealer.sql > /apps/ims/df5731b/CVP/Update_CVP_Dealer.log
 
-  $utilDir/Writelog "LoadDealersInfo Ended" $/$jobLog
+  $utilDir/Writelog "LoadDealersInfo Ended" $/$jobLog  ## doubt
 }
 
 BackupTransactions()
@@ -448,7 +448,7 @@ UpdateStatistics()
   fi
   $utilDir/CheckSqlError "^SQL" "SQL3107W" $/$$.log
   if [ $? -ge 1 ]
-    then ProcessMessages 4 Update_Transactions.sq]
+    then ProcessMessages 4 Update_Transactions.sq] # doubt
   fi
 
   $utilDir/WriteLog "UpdateStatistics Ended" $/$jobLog
@@ -472,70 +472,70 @@ Finalize()
   rm $/*.msg
 }
 
-# ---- Script starts here ----
-#if [ $# -eq 0 ]
-#  then skipstep=0
-#  else skipstep=$1
-#fi
+ ---- Script starts here ----
+if [ $# -eq 0 ]
+  then skipstep=0
+  else skipstep=$1
+fi
 
 Initialize $1
 
 
-#if [ $skipstep -le 1 ]
-#  then WaitForFile
-#      LoadWholesaleFile
-#  else $utilDir/WriteLog "Skipping Step: LoadWholesaleFile" $/$jobLog
-#fi
-#
-#if [ $skipstep -le 2 ]
-#  then LoadDealersInfo
-#  else $utilDir/WriteLog "Skipping Step: LoadDealersInfo" $/$jobLog
-#fi
-#
-#if [ $skipstep -le 3 ]
-#  then ProcessWholesaleFile
-#  else $utilDir/WriteLog "Skipping Step: ProcessWholesaleFile" $/$jobLog
-#fi
-#
-#if [ $skipstep -le 4 ]
-#  then BackupTransactions
-#  else $utilDir/WriteLog "Skipping Step: BackupTransactions" $/$jobLog
-#fi
-#
-#if [ $skipstep -le 5 ]
-#  then UpdateTransactions
-#  else $utilDir/WriteLog "Skipping Step: UpdateTransactions" $/$jobLog
-#fi
-#
-#if [ $skipstep -le 6 ]
-#  then CreateBillingFile
-#  else $utilDir/WriteLog "Skipping Step: CreateBillingFile" $/$jobLog
-#fi
-#
-#if [ $skipstep -le 7 ]
-#  then CreateAccountingReport
-#  else $utilDir/WriteLog "Skipping Step: CreateAccountingReport" $/$jobLog
-#fi
-#
-#if [ $skipstep -le 8 ]
-#  then EncryptBillingFile
-#  else $utilDir/WriteLog "Skipping Step: EncryptBillingFile" $/$jobLog
-#fi
-#
-#if [ $skipstep -le 9 ]
-#  then SendBillingFile
-#  else $utilDir/WriteLog "Skipping Step: SendBillingFile" $/$jobLog
-#fi
-#
-#if [ $skipstep -le 10 ]
-#  then SendReports
-#  else $utilDir/WriteLog "Skipping Step: SendAccountingReport" $/$jobLog
-#fi
-#
-#if [ $skipstep -le 11 ]
-#  then BackupFiles
-#  else $utilDir/WriteLog "Skipping Step: BackupFiles" $/$jobLog
-#fi
-#
-#Finalize
-#exit 0
+if [ $skipstep -le 1 ]
+  then WaitForFile
+      LoadWholesaleFile
+  else $utilDir/WriteLog "Skipping Step: LoadWholesaleFile" $/$jobLog
+fi
+
+if [ $skipstep -le 2 ]
+  then LoadDealersInfo
+  else $utilDir/WriteLog "Skipping Step: LoadDealersInfo" $/$jobLog
+fi
+
+if [ $skipstep -le 3 ]
+  then ProcessWholesaleFile
+  else $utilDir/WriteLog "Skipping Step: ProcessWholesaleFile" $/$jobLog
+fi
+
+if [ $skipstep -le 4 ]
+  then BackupTransactions
+  else $utilDir/WriteLog "Skipping Step: BackupTransactions" $/$jobLog
+fi
+
+if [ $skipstep -le 5 ]
+  then UpdateTransactions
+  else $utilDir/WriteLog "Skipping Step: UpdateTransactions" $/$jobLog
+fi
+
+if [ $skipstep -le 6 ]
+  then CreateBillingFile
+  else $utilDir/WriteLog "Skipping Step: CreateBillingFile" $/$jobLog
+fi
+
+if [ $skipstep -le 7 ]
+  then CreateAccountingReport
+  else $utilDir/WriteLog "Skipping Step: CreateAccountingReport" $/$jobLog
+fi
+
+if [ $skipstep -le 8 ]
+  then EncryptBillingFile
+  else $utilDir/WriteLog "Skipping Step: EncryptBillingFile" $/$jobLog
+fi
+
+if [ $skipstep -le 9 ]
+  then SendBillingFile
+  else $utilDir/WriteLog "Skipping Step: SendBillingFile" $/$jobLog
+fi
+
+if [ $skipstep -le 10 ]
+  then SendReports
+  else $utilDir/WriteLog "Skipping Step: SendAccountingReport" $/$jobLog
+fi
+
+if [ $skipstep -le 11 ]
+  then BackupFiles
+  else $utilDir/WriteLog "Skipping Step: BackupFiles" $/$jobLog
+fi
+
+Finalize
+exit 0

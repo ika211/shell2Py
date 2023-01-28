@@ -9,3 +9,15 @@ Skipping Step: CreateAccountingReport
 Skipping Step: EncryptBillingFile
 Skipping Step: SendBillingFile
 Skipping Step: SendReports
+joblog
+Skipping Step: load_wholesale_file
+Skipping Step: load_wholesale_file
+Skipping Step: load_dealers_info
+Skipping Step: process_wholesale_file
+Skipping Step: backup_transactions
+Skipping Step: update_transactions
+Skipping Step: create_billing_file
+Skipping Step: create_accounting_report
+Skipping Step: encrypt_billing_file
+Skipping Step: send_billing_file
+Skipping Step: send_reports
