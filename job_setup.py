@@ -1,5 +1,6 @@
 import configparser
 
+
 config = configparser.ConfigParser()
 config.read('cp_billing_config.ini')
 
