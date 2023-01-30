@@ -3,6 +3,9 @@ import sys
 import shutil
 import datetime
 import subprocess
+from db_functions import check_db2_connection, execute_sql_script, execute_sql_script_get_output
+from job_setup import *
+from mailing import send_email
 
 def write_log(message, logpath):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -13,15 +16,10 @@ def write_startup_message(message, logpath):
     write_log("============================================================", logpath)
     write_log(message, logpath)
 
-def send_email(script_name, message, job_log):
-    subprocess.run([f"{util_dir}/SendEmail", f"{script_name}", f"{message}", f"{job_log}"])
 
 def initialize():
-    util_dir = os.path.join(os.environ['HOME'], 'utils')
     os.chdir(os.environ['HOME'])
-    os.system(f"{util_dir}/SetupDirectories {os.path.join(os.environ['HOME'], 'CVP/Scripts')}")
-    os.system(f"{util_dir}/SetupEnvironment")
-    os.system(f"{util_dir}/SetupJob cp_billing")
+
     if not os.path.isfile(job_log):
         os.remove(job_log)
     with open(job_log, 'a') as f:
@@ -42,9 +40,7 @@ def initialize():
     return_code = os.system(f"{util_dir}/SetupUDBEnvironment")
     if return_code > 0:
         process_messages(1)
-    global whlsl_file, dlr_file
-    whlsl_file = "WSMONTHLYUNIT.TXT"
-    dlr_file = "dealers_info.txt"
+
     open(os.path.join(data_dir, 'dummy'), 'w').close()
 
 def validate_files():
@@ -68,119 +64,141 @@ def wait_for_file():
 
 def load_wholesale_file():
     write_startup_message("load_wholesale_file Started", job_log)
-    cmd = subprocess.run([".", f"{util_dir}/ConnectToDatabase",f"{database}", f"{userid}", f"{password}"])
-    if cmd.returncode > 0:
-        process_messages(3, database=database)
+    response = check_db2_connection(database, userid, password)
+    conn_successful = response["success"]
+    if not conn_successful:
+        write_log(response["error_msg"], job_log)
+        process_messages(3, problem_database=database)
 
-    subprocess.run(["db2", "-stvf", "f{sql_dir}/Load_Wholesale_Monthly.sql", ">", "$$.log"])
-    subprocess.run(["cat", "$$.log", f"{job_log}"])
-    cmd4 = subprocess.run([f"{util_dir}/CheckSqlError", "SQLSTATE", "00000|020000", "$$.log"])
-    if cmd4.returncode >= 1:
+    sql_script = os.path.join(sql_dir, "Load_Wholesale_Monthly.sql")
+    response = execute_sql_script(database, userid, password, sql_script)
+    sql_script_successful = response[0]
+    if not sql_script_successful:
+        write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Load_Wholesale_Monthly.sql")
-    cmd5 = subprocess.run([f"{util_dir}/CheckSqlError", "^SQL", "SQL3107W", "$$.log"])
-    if cmd5.returncode >= 1:
-        process_messages(4, sql_script="Load_Wholesale_Monthly.sql")
-    write_startup_message("load_wholesale_file Ended", job_log)
+    else:
+        write_log("Load_Wholesale_Monthly.sql executed successfully", job_log)
+
+    write_log("load_wholesale_file Ended", job_log)
 
 def process_wholesale_file():
     write_startup_message("process_wholesale_file Started", job_log)
-    cmd = subprocess.run([".", f"{util_dir}/ConnectToDatabase", f"{database}", f"{userid}", f"{password}"])
-    if cmd.returncode > 0:
-        process_messages(3, database=database)
+    response = check_db2_connection(database, userid, password)
+    conn_successful = response["success"]
+    if not conn_successful:
+        write_log(response["error_msg"], job_log)
+        process_messages(3, problem_database=database)
 
-    subprocess.run(["db2", "-stvf", "f{sql_dir}/Process_Wholesale_Monthly.sql", ">", "$$.log"])
-    subprocess.run(["cat", "$$.log", f"{job_log}"])
-    cmd4 = subprocess.run([f"{util_dir}/CheckSqlError", "SQLSTATE", "00000|020000", "$$.log"])
-    if cmd4.returncode >= 1:
-        process_messages(5)
-    # write_startup_message("process_wholesale_file Ended", job_log)
+    sql_script = os.path.join(sql_dir, "Process_Wholesale_Monthly.sql")
+    response = execute_sql_script(database, userid, password, sql_script)
+    sql_script_successful = response[0]
+    if not sql_script_successful:
+        write_log(response["error_msg"], job_log)
+        process_messages(4, sql_script="Process_Wholesale_Monthly.sql")
+    else:
+        write_log("Load_Wholesale_Monthly.sql executed successfully", job_log)
+
     write_log("process_wholesale_file Ended", job_log)
 
 def load_dealers_info():
     write_startup_message("load_dealers_info Started", job_log)
-    cmd = subprocess.run([".", f"{util_dir}/ConnectToDatabase", f"{database}", f"{userid}", f"{password}"])
-    if cmd.returncode > 0:
-        process_messages(3, database=database)
+    response = check_db2_connection(database, userid, password)
+    conn_successful = response["success"]
+    if not conn_successful:
+        write_log(response["error_msg"], job_log)
+        process_messages(3, problem_database=database)
 
-    subprocess.run(["db2", "-stvf", "f{sql_dir}/Extract_Dealers.sql", "-x", "-r", f"{data_dir}/dealers_infos.txt",
-                    ">", "$$.log"])
-    subprocess.run(["cat", "$$.log", f"{job_log}"])
-    cmd4 = subprocess.run([f"{util_dir}/CheckSqlError", "SQLSTATE", "00000|020000", "$$.log"])
-    if cmd4.returncode >= 1:
+    # subprocess.run(["db2", "-stvf", "f{sql_dir}/Extract_Dealers.sql", "-x", "-r", f"{data_dir}/dealers_infos.txt",
+    #                 ">", "$$.log"])
+    sql_script = os.path.join(sql_dir, "Extract_Dealers.sql")
+    response = execute_sql_script_get_output(database, userid, password, sql_script, f"{data_dir}/dealers_infos.txt")
+    sql_script_successful = response[0]
+    if not sql_script_successful:
+        write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Extract_Dealers.sql")
-    cmd5 = subprocess.run([f"{util_dir}/CheckSqlError", "^SQL", "SQL3107W", "$$.log"])
-    if cmd5.returncode >= 1:
-        process_messages(4, sql_script="Extract_Dealers.sql")
+    else:
+        write_log("Extract_Dealers.sql executed successfully", job_log)
+
     write_startup_message("load_dealers_info Ended", job_log)
 
-    cmd = subprocess.run([".", f"{util_dir}/ConnectToDatabase", f"{database}", f"{userid}", f"{password}"])
-    if cmd.returncode > 0:
-        process_messages(3, database=database)
+    # # load dealer details into dealer-temp
+    # subprocess.run(["db2", "-stvf", "f{sql_dir}/Backup_Dealers.sql", ">", "/apps/ims/df5731b/CVP/Backup_Dealers.log"])
+    ## cant create the log file like command shell
+    execute_sql_script(database, userid, password, os.path.join(sql_dir, "Backup_Dealers.sql"))
 
-    # load dealer details into dealer-temp
-    subprocess.run(["db2", "-stvf", "f{sql_dir}/Backup_Dealers.sql", ">", "/apps/ims/df5731b/CVP/Backup_Dealers.log"])
-    subprocess.run(["db2", "-stvf", "f{sql_dir}/Load_Dealers.sql", ">", "$$.log"])
-    subprocess.run(["cat", "$$.log", f"{job_log}"])
-    cmd4 = subprocess.run([f"{util_dir}/CheckSqlError", "SQLSTATE", "00000|020000", "$$.log"])
-    if cmd4.returncode >= 1:
+    sql_script = os.path.join(sql_dir, "Load_Dealers.sql")
+    response = execute_sql_script(database, userid, password, sql_script)
+    sql_script_successful = response[0]
+    if not sql_script_successful:
+        write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Load_Dealers.sql")
-    cmd5 = subprocess.run([f"{util_dir}/CheckSqlError", "^SQL", "SQL3107W", "$$.log"])
-    if cmd5.returncode >= 1:
-        process_messages(4, sql_script="Load_Dealers.sql")
+    else:
+        write_log("Load_Dealers.sql executed successfully", job_log)
+
 
     # Call update CVP dealer stored procedure
-    subprocess.run(["db2", "-stvf", "f{sql_dir}/Update_CVP_Dealer.sql", ">",
-                    "/apps/ims/df5731b/CVP/Update_CVP_Dealer.log"])
-    # write_startup_message("update_dealers_info Ended", job_log)
+    # subprocess.run(["db2", "-stvf", "f{sql_dir}/Update_CVP_Dealer.sql", ">",
+    #                 "/apps/ims/df5731b/CVP/Update_CVP_Dealer.log"])
+
+    ## cant create the log file like command shell
+    execute_sql_script(database, userid, password, os.path.join(sql_dir, "Update_CVP_Dealer.sql"))
+
     write_log("update_dealers_info Ended", job_log)
 
 def backup_transactions():
     write_startup_message("backup_transactions Started", job_log)
-    cmd = subprocess.run([".", f"{util_dir}/ConnectToDatabase", f"{database}", f"{userid}", f"{password}"])
-    if cmd.returncode > 0:
-        process_messages(3, database=database)
+    response = check_db2_connection(database, userid, password)
+    conn_successful = response["success"]
+    if not conn_successful:
+        write_log(response["error_msg"], job_log)
+        process_messages(3, problem_database=database)
 
-    subprocess.run(["db2", "-stvf", "f{sql_dir}/Backup_Transactions.sql", ">", "$$.log"])
-    subprocess.run(["cat", "$$.log", f"{job_log}"])
-    cmd4 = subprocess.run([f"{util_dir}/CheckSqlError", "SQLSTATE", "00000|020000", "$$.log"])
-    if cmd4.returncode >= 1:
+    sql_script = os.path.join(sql_dir, "Backup_Transactions.sql")
+    response = execute_sql_script(database, userid, password, sql_script)
+    sql_script_successful = response[0]
+    if not sql_script_successful:
+        write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Backup_Transactions.sql")
+    else:
+        write_log("Backup_Transactions.sql executed successfully", job_log)
 
-    cmd5 = subprocess.run([f"{util_dir}/CheckSqlError", "^SQL", "SQL3107W", "$$.log"])
-    if cmd5.returncode >= 1:
-        process_messages(4, sql_script="Backup_Transactions.sql")
     write_log("backup_transactions Ended", job_log)
 
 def update_transactions():
     write_startup_message("update_transactions Started", job_log)
-    cmd = subprocess.run([".", f"{util_dir}/ConnectToDatabase", f"{database}", f"{userid}", f"{password}"])
-    if cmd.returncode > 0:
-        process_messages(3, database=database)
+    response = check_db2_connection(database, userid, password)
+    conn_successful = response["success"]
+    if not conn_successful:
+        write_log(response["error_msg"], job_log)
+        process_messages(3, problem_database=database)
 
-    subprocess.run(["db2", "-stvf", f"{sql_dir}/Update_Transactions.sql", ">", "$$.log"])
-    subprocess.run(["cat", "$$.log", f"{job_log}"])
-    cmd4 = subprocess.run([f"{util_dir}/CheckSqlError", "SQLSTATE", "00000|020000", "$$.log"])
-    if cmd4.returncode >= 1:
+    sql_script = os.path.join(sql_dir, "Update_Transactions.sql")
+    response = execute_sql_script(database, userid, password, sql_script)
+    sql_script_successful = response[0]
+    if not sql_script_successful:
+        write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Update_Transactions.sql")
-    cmd5 = subprocess.run([f"{util_dir}/CheckSqlError", "^SQL", "SQL3107W", "$$.log"])
-    if cmd5.returncode >= 1:
-        process_messages(4, sql_script="Update_Transactions.sql")
+    else:
+        write_log("Update_Transactions.sql executed successfully", job_log)
+
     write_log("update_transactions Ended", job_log)
 
 def create_billing_file():
     write_startup_message("create_billing_file Started", job_log)
-    cmd = subprocess.run([".", f"{util_dir}/ConnectToDatabase", f"{database}", f"{userid}", f"{password}"])
-    if cmd.returncode > 0:
-        process_messages(3, database=database)
+    response = check_db2_connection(database, userid, password)
+    conn_successful = response["success"]
+    if not conn_successful:
+        write_log(response["error_msg"], job_log)
+        process_messages(3, problem_database=database)
 
-    subprocess.run(["db2", "-stvf", f"{sql_dir}/Create_Billing_File.sql", ">", "$$.log"])
-    subprocess.run(["cat", "$$.log", f"{job_log}"])
-    cmd4 = subprocess.run([f"{util_dir}/CheckSqlError", "SQLSTATE", "00000|020000", "$$.log"])
-    if cmd4.returncode >= 1:
+    sql_script = os.path.join(sql_dir, "Create_Billing_File.sql")
+    response = execute_sql_script(database, userid, password, sql_script)
+    sql_script_successful = response[0]
+    if not sql_script_successful:
+        write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Create_Billing_File.sql")
-    cmd5 = subprocess.run([f"{util_dir}/CheckSqlError", "^SQL", "SQL3107W", "$$.log"])
-    # if cmd5.returncode >= 1:
-    #     process_messages(4, sql_script="Create_Billing_File.sql")
+    else:
+        write_log("Create_Billing_File.sql executed successfully", job_log)
 
     #
     # code missing
@@ -190,28 +208,27 @@ def create_billing_file():
 
 def create_accounting_report():
     write_startup_message("create_accounting_report Started", job_log)
-    cmd = subprocess.run([".", f"{util_dir}/ConnectToDatabase", f"{database}", f"{userid}", f"{password}"])
-    if cmd.returncode > 0:
-        process_messages(3, database=database)
+    response = check_db2_connection(database, userid, password)
+    conn_successful = response["success"]
+    if not conn_successful:
+        write_log(response["error_msg"], job_log)
+        process_messages(3, problem_database=database)
 
-    subprocess.run(["db2", "-stvf", f"{sql_dir}/Create_Accounting_Report.sql", ">", "$$.log"])
-    subprocess.run(["cat", "$$.log", f"{job_log}"])
-    cmd4 = subprocess.run([f"{util_dir}/CheckSqlError", "SQLSTATE", "00000|020000", "$$.log"])
-    if cmd4.returncode >= 1:
+    sql_script = os.path.join(sql_dir, "Create_Accounting_Report.sql")
+    response = execute_sql_script(database, userid, password, sql_script)
+    sql_script_successful = response[0]
+    if not sql_script_successful:
+        write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Create_Accounting_Report.sql")
-    cmd5 = subprocess.run([f"{util_dir}/CheckSqlError", "^SQL", "SQL3107W", "$$.log"])
-    # if cmd5.returncode >= 1:
-    #     process_messages(4, sql_script="Create_Accounting_Report.sql")
+    else:
+        write_log("Create_Accounting_Report.sql executed successfully", job_log)
 
-    # code missing
+    # code missing ?
 
     write_log("create_accounting_report Ended", job_log)
 
 def encrypt_billing_file():
     write_startup_message("encrypt_billing_file Started", job_log)
-    # cmd = subprocess.run([".", f"{util_dir}/ConnectToDatabase", f"{database}", f"{userid}", f"{password}"])
-    # if cmd.returncode > 0:
-    #     process_messages(3, database=database)
 
     cmd = subprocess.run([".", f"{util_dir}/Encrypt", f"{data_dir}/CVP_monthly.csv"])
     if cmd.returncode >= 1:
@@ -222,7 +239,7 @@ def encrypt_billing_file():
 
 def send_billing_file():
     write_startup_message("send_billing_file Started", job_log)
-    cmd = subprocess.run([".", f"{util_dir}/Ftp", f"{AxwayServer}", f"{parm_dir}/send_to_Axway.ftp",
+    cmd = subprocess.run([".", f"{util_dir}/Ftp", f"{axway_server}", f"{param_dir}/send_to_Axway.ftp",
                           "ftp_$$.msg", "ftp_$$.err"])
     ftp_error = cmd.returncode
 
@@ -243,7 +260,7 @@ def send_reports():
     shutil.move(f"{data_dir}/CVP_Exception", f"{data_dir}/CVP_Exception.{curr_date}.csv")
     shutil.move(f"{data_dir}/CVP_Accounting", f"{data_dir}/CVP_Accounting.{curr_date}.csv")
 
-    cmd = subprocess.run([f"{util_dir}/Ftp", f"{file_server}", f"{parm_dir}/send_to_Wdrive.ftp",
+    cmd = subprocess.run([f"{util_dir}/Ftp", f"{file_server}", f"{param_dir}/send_to_Wdrive.ftp",
                             "ftp_$$.msg", "ftp_$$.err"])
     ftp_error = cmd.returncode
 
@@ -279,11 +296,11 @@ def backup_files():
     shutil.make_archive(f'{backup_dir}/ins_whsl_cvp_transaction.txt.1', 'gz', f'{backup_dir}/ins_whsl_cvp_transaction.txt.1')
 
     # Delete temporary files
-    subprocess.run(["rm", f"{data_dir}/CVP_Monthly_Data.txt"])
-    subprocess.run(["rm", f"{data_dir}/CVP_Exception_Data"])
-    subprocess.run(["rm", f"{data_dir}/CVP_Accounting_Data"])
-    subprocess.run(["rm", f"{data_dir}/CVP_monthly.txt.pgp"])
-    subprocess.run(["rm", "null.log"])
+    os.remove(f"{data_dir}/CVP_Monthly_Data.txt")
+    os.remove(f"{data_dir}/CVP_Exception_Data")
+    os.remove(f"{data_dir}/CVP_Accounting_Data")
+    os.remove(f"{data_dir}/CVP_monthly.txt.pgp")
+    os.remove("null.log")
 
     # Billing file backup
     shutil.move(f"{data_dir}/CVP_Monthly.txt", f"{backup_dir}/CVP_Monthly.txt.{curr_date}")
@@ -298,20 +315,21 @@ def backup_files():
 def update_statistics():
     write_startup_message("update_statistics Started", job_log)
 
-    cmd = subprocess.run([f"{util_dir}/ConnectToDatabase", f"{database}", f"{userid}", f"{password}"])
-    if cmd.returncode > 0 :
-        process_messages(3, database=database)
-    pid = os.getpid()
-    subprocess.run(["db2","-stvf", f"{sql_dir}/Update_Statistics.sql"], stdout=open(f"{pid}.log", "w"))
-    subprocess.run(["cat", f"{pid}.log"], stdout=open("job.log", "a"))
-    cmd4 = subprocess.run([f"{util_dir}/CheckSqlError", "SQLSTATE", "00000|20000", f"{pid}.log"])
-    if cmd4.returncode >= 1:
-        process_messages(4, sql_script="Update_Statistics.sql")
-    cmd5 = subprocess.run([f"{util_dir}/CheckSqlError", "^SQL", "SQL3107W", f"{pid}.log"])
-    if cmd5.returncode >= 1:
-        process_messages(4, sql_script="Update_Statistics.sql")
+    response = check_db2_connection(database, userid, password)
+    conn_successful = response["success"]
+    if not conn_successful:
+        write_log(response["error_msg"], job_log)
+        process_messages(3, problem_database=database)
 
-    subprocess.run(["rm", f"{pid}.log"])
+    sql_script = os.path.join(sql_dir, "Update_Statistics.sql")
+    response = execute_sql_script(database, userid, password, sql_script)
+    sql_script_successful = response[0]
+    if not sql_script_successful:
+        write_log(response["error_msg"], job_log)
+        process_messages(4, sql_script="Update_Statistics.sql")
+    else:
+        write_log("Update_Statistics.sql executed successfully", job_log)
+
     write_log("update_statistics Ended", job_log)
 
 def finalize():
@@ -324,7 +342,7 @@ def finalize():
     # Log backup
 
 
-def process_messages(error_code, sql_script=None, database=None):
+def process_messages(error_code, sql_script=None, problem_database=None):
     if error_code == 0:
         send_email(sys.argv[0], "Completed Successfully", job_log)
     elif error_code == 1:
@@ -368,24 +386,20 @@ def process_messages(error_code, sql_script=None, database=None):
 
 
 if __name__ == '__main__':
-    job_log = "joblog"  # remove
-    job_name = "temp"  # remove
-    data_dir = os.path.join(os.environ['HOME'], 'data')  # remove
-    # add variable values to os.environ to share variables across python and shell
-    global whlsl_file, dlr_file, util_dir, sql_dir, database, userid, password
-    global AxwayServer, parm_dir, file_server, backup_dir, WhlslFile, DlrFile
-
     curr_date = datetime.datetime.now().strftime("%Y%m%d")
     skipstep = 0
-    print(sys.argv)
+
+    whlsl_file = "WSMONTHLYUNIT.TXT"
+    dlr_file = "dealers_info.txt"
+
     if len(sys.argv) > 1:
         skipstep = int(sys.argv[1]) - 1
-
-    # initialize(sys.argv[1]) ## doubt
 
     steps = ["load_wholesale_file", "load_dealers_info", "process_wholesale_file", "backup_transactions",
              "update_transactions", "create_billing_file", "create_accounting_report", "encrypt_billing_file",
              "send_billing_file", "send_reports", "backup_files"]
+
+    initialize()
 
     for i in range(0, len(steps)):
         if skipstep <= i:
