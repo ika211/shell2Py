@@ -31,6 +31,7 @@ def execute_sql_script(database, user, password, sql_script):
 
     response = {}
     conn = None
+    stmt = None
     dsn = f"DATABASE={database};HOSTNAME={hostname};PORT={port};PROTOCOL=TCPIP;UID={user};PWD={password}"
     try:
         conn = ibm_db.connect(dsn, "", "")
@@ -55,8 +56,9 @@ def execute_sql_script(database, user, password, sql_script):
             response["error_msg"] = e
 
     finally:
-        if conn:
+        if stmt:
             ibm_db.close(stmt)
+        if conn:
             ibm_db.close(conn)
 
     return response
@@ -66,6 +68,7 @@ def execute_sql_script_get_output(database, user, password, sql_script, output_f
 
     response = {}
     conn = None
+    stmt = None
     dsn = f"DATABASE={database};HOSTNAME={hostname};PORT={port};PROTOCOL=TCPIP;UID={user};PWD={password}"
     try:
         conn = ibm_db.connect(dsn, "", "")
@@ -96,8 +99,9 @@ def execute_sql_script_get_output(database, user, password, sql_script, output_f
 
     finally:
         # Close the statement and connection
-        if conn:
+        if stmt:
             ibm_db.close(stmt)
+        if conn:
             ibm_db.close(conn)
 
     return response
@@ -105,4 +109,3 @@ def execute_sql_script_get_output(database, user, password, sql_script, output_f
 
 if __name__ == '__main__':
     print(execute_sql_script_get_output("", "", "", "temp.sql", "output.txt"))
-
