@@ -6,17 +6,21 @@ def check_db2_connection(database, user, password):
     """Check DB2 connection"""
 
     response = {}
-    # Database connection string
     dsn = f"DATABASE={database};HOSTNAME={hostname};PORT={port};PROTOCOL=TCPIP;UID={user};PWD={password}"
+    conn = None
     try:
         conn = ibm_db.connect(dsn, "", "")
         response["success"] = True
-    except ibm_db.conn_error as e:
+
+    except Exception as e:
         response["success"] = False
-        response["SQLSTATE"] = e
-        response["error_msg"] = ibm_db.conn_errormsg()
+        if ibm_db.conn_error() != "":
+            response["SQLSTATE"] = ibm_db.conn_error()
+            response["error_msg"] = ibm_db.conn_errormsg()
+        else:
+            response["error_msg"] = e
+
     finally:
-        # Close the connection
         if conn:
             ibm_db.close(conn)
 
@@ -24,11 +28,10 @@ def check_db2_connection(database, user, password):
 
 
 def execute_sql_script(database, user, password, sql_script):
-    """Connect to DB2 database and execute SQL script"""
 
     response = {}
-    # Database connection string
-    dsn = f"DATABASE={database};HOSTNAME=;PORT=port;PROTOCOL=TCPIP;UID={user};PWD={password}"
+    conn = None
+    dsn = f"DATABASE={database};HOSTNAME={hostname};PORT={port};PROTOCOL=TCPIP;UID={user};PWD={password}"
     try:
         conn = ibm_db.connect(dsn, "", "")
 
@@ -40,13 +43,18 @@ def execute_sql_script(database, user, password, sql_script):
         ibm_db.execute(stmt)
         response["success"] = True
 
-    except ibm_db.stmt_error as e:
-        response["error_msg"] = e
-        response["SQLSTATE"] = ibm_db.stmt_errormsg()
+    except Exception as e:
         response["success"] = False
+        if ibm_db.stmt_error() == "":
+            response["error_msg"] = ibm_db.conn_errormsg()
+            response["SQLSTATE"] = ibm_db.conn_error()
+        elif ibm_db.conn_error() == "":
+            response["error_msg"] = ibm_db.stmt_errormsg()
+            response["SQLSTATE"] = ibm_db.stmt_error()
+        else:
+            response["error_msg"] = e
 
     finally:
-        # Close the statement and connection
         if conn:
             ibm_db.close(stmt)
             ibm_db.close(conn)
@@ -55,11 +63,10 @@ def execute_sql_script(database, user, password, sql_script):
 
 
 def execute_sql_script_get_output(database, user, password, sql_script, output_file):
-    """Connect to DB2 database and execute SQL script"""
 
     response = {}
-    # Database connection string
-    dsn = f"DATABASE={database};HOSTNAME=;PORT=port;PROTOCOL=TCPIP;UID={user};PWD={password}"
+    conn = None
+    dsn = f"DATABASE={database};HOSTNAME={hostname};PORT={port};PROTOCOL=TCPIP;UID={user};PWD={password}"
     try:
         conn = ibm_db.connect(dsn, "", "")
 
@@ -76,10 +83,16 @@ def execute_sql_script_get_output(database, user, password, sql_script, output_f
                 file.write(str(result) + '\n')
                 result = ibm_db.fetch_tuple(stmt)
 
-    except ibm_db.stmt_error as e:
-        response["error_msg"] = e
-        response["SQLSTATE"] = ibm_db.stmt_errormsg()
+    except Exception as e:
         response["success"] = False
+        if ibm_db.conn_error() != "":
+            response["SQLSTATE"] = ibm_db.conn_error()
+            response["error_msg"] = ibm_db.conn_errormsg()
+        elif ibm_db.stmt_error() != "":
+            response["SQLSTATE"] = ibm_db.conn_error()
+            response["error_msg"] = ibm_db.conn_errormsg()
+        else:
+            response["error_msg"] = e
 
     finally:
         # Close the statement and connection
@@ -91,4 +104,5 @@ def execute_sql_script_get_output(database, user, password, sql_script, output_f
 
 
 if __name__ == '__main__':
-    print(check_db2_connection("", "", ""))
+    print(execute_sql_script_get_output("", "", "", "temp.sql", "output.txt"))
+
