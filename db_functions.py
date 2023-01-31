@@ -1,6 +1,7 @@
 import ibm_db
 from job_setup import hostname, port
 
+
 def check_db2_connection(database, user, password):
     """Check DB2 connection"""
 
@@ -20,6 +21,7 @@ def check_db2_connection(database, user, password):
             ibm_db.close(conn)
 
     return response
+
 
 def execute_sql_script(database, user, password, sql_script):
     """Connect to DB2 database and execute SQL script"""
@@ -51,6 +53,7 @@ def execute_sql_script(database, user, password, sql_script):
 
     return response
 
+
 def execute_sql_script_get_output(database, user, password, sql_script, output_file):
     """Connect to DB2 database and execute SQL script"""
 
@@ -73,7 +76,6 @@ def execute_sql_script_get_output(database, user, password, sql_script, output_f
                 file.write(str(result) + '\n')
                 result = ibm_db.fetch_tuple(stmt)
 
-
     except ibm_db.stmt_error as e:
         response["error_msg"] = e
         response["SQLSTATE"] = ibm_db.stmt_errormsg()
@@ -86,3 +88,7 @@ def execute_sql_script_get_output(database, user, password, sql_script, output_f
             ibm_db.close(conn)
 
     return response
+
+
+if __name__ == '__main__':
+    print(check_db2_connection("", "", ""))
