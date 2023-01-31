@@ -7,10 +7,12 @@ from db_functions import check_db2_connection, execute_sql_script, execute_sql_s
 from job_setup import *
 from mailing import send_email
 
+
 def write_log(message, logpath):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(logpath, 'a') as f:
-        f.write(f'{timestamp} - {message}')
+        f.write(f'{timestamp} - {message} \n')
+
 
 def write_startup_message(message, logpath):
     write_log("============================================================", logpath)
@@ -18,9 +20,7 @@ def write_startup_message(message, logpath):
 
 
 def initialize():
-    os.chdir(os.environ['HOME'])
-
-    if not os.path.isfile(job_log):
+    if os.path.isfile(job_log):
         os.remove(job_log)
     with open(job_log, 'a') as f:
         f.write(f"{os.path.basename(__file__)} - Started\n")
@@ -37,27 +37,25 @@ def initialize():
         f.write("   9) SendBillingFile\n")
         f.write("  10) SendReports\n")
         f.write("  11) BackupFiles\n")
-    return_code = os.system(f"{util_dir}/SetupUDBEnvironment")
-    if return_code > 0:
-        process_messages(1)
 
     open(os.path.join(data_dir, 'dummy'), 'w').close()
 
+
 def validate_files():
-    src = '/home/SVC/dcicftp/Wholesale/Inbound/WSMONTHLYUNIT.TXT'
-    dst = '/apps/ims/df5731b/CVP/WSMONTHLYUNIT.TXT'
-    shutil.move(src, dst)
-    if not os.path.isfile(os.path.join(data_dir, whlsl_file)):
-        write_log(f"Missing {whlsl_file} file", job_log)
-        return False
-    return False
+    # src = '/home/SVC/dcicftp/Wholesale/Inbound/WSMONTHLYUNIT.TXT'
+    # dst = '/apps/ims/df5731b/CVP/WSMONTHLYUNIT.TXT'
+    # shutil.move(src, dst)
+    # if not os.path.isfile(os.path.join(data_dir, whlsl_file)):
+    #     write_log(f"Missing {whlsl_file} file", job_log)
+    #     return False
+    return True
 
 
 def wait_for_file():
     file_exists = validate_files()
     if not file_exists:
         process_messages(2)
-    src = f'{os.environ["HOME"]}/CVP/{whlsl_file}'   ## check again
+    src = os.path.join(home_dir, "CVP", whlsl_file)  # check again
     dst = f'{data_dir}'
     shutil.move(src, dst)
 
@@ -81,6 +79,7 @@ def load_wholesale_file():
 
     write_log("load_wholesale_file Ended", job_log)
 
+
 def process_wholesale_file():
     write_startup_message("process_wholesale_file Started", job_log)
     response = check_db2_connection(database, userid, password)
@@ -99,6 +98,7 @@ def process_wholesale_file():
         write_log("Load_Wholesale_Monthly.sql executed successfully", job_log)
 
     write_log("process_wholesale_file Ended", job_log)
+
 
 def load_dealers_info():
     write_startup_message("load_dealers_info Started", job_log)
@@ -135,7 +135,6 @@ def load_dealers_info():
     else:
         write_log("Load_Dealers.sql executed successfully", job_log)
 
-
     # Call update CVP dealer stored procedure
     # subprocess.run(["db2", "-stvf", "f{sql_dir}/Update_CVP_Dealer.sql", ">",
     #                 "/apps/ims/df5731b/CVP/Update_CVP_Dealer.log"])
@@ -144,6 +143,7 @@ def load_dealers_info():
     execute_sql_script(database, userid, password, os.path.join(sql_dir, "Update_CVP_Dealer.sql"))
 
     write_log("update_dealers_info Ended", job_log)
+
 
 def backup_transactions():
     write_startup_message("backup_transactions Started", job_log)
@@ -164,6 +164,7 @@ def backup_transactions():
 
     write_log("backup_transactions Ended", job_log)
 
+
 def update_transactions():
     write_startup_message("update_transactions Started", job_log)
     response = check_db2_connection(database, userid, password)
@@ -182,6 +183,7 @@ def update_transactions():
         write_log("Update_Transactions.sql executed successfully", job_log)
 
     write_log("update_transactions Ended", job_log)
+
 
 def create_billing_file():
     write_startup_message("create_billing_file Started", job_log)
@@ -206,6 +208,7 @@ def create_billing_file():
 
     write_log("create_billing_file Ended", job_log)
 
+
 def create_accounting_report():
     write_startup_message("create_accounting_report Started", job_log)
     response = check_db2_connection(database, userid, password)
@@ -226,6 +229,7 @@ def create_accounting_report():
     # code missing ?
 
     write_log("create_accounting_report Ended", job_log)
+
 
 def encrypt_billing_file():
     write_startup_message("encrypt_billing_file Started", job_log)
@@ -254,6 +258,7 @@ def send_billing_file():
 
     write_log("send_billing_file Ended", job_log)
 
+
 def send_reports():
     write_startup_message("send_reports Started", job_log)
 
@@ -261,7 +266,7 @@ def send_reports():
     shutil.move(f"{data_dir}/CVP_Accounting", f"{data_dir}/CVP_Accounting.{curr_date}.csv")
 
     cmd = subprocess.run([f"{util_dir}/Ftp", f"{file_server}", f"{param_dir}/send_to_Wdrive.ftp",
-                            "ftp_$$.msg", "ftp_$$.err"])
+                          "ftp_$$.msg", "ftp_$$.err"])
     ftp_error = cmd.returncode
 
     subprocess.run(["cat", "ftp_$$.msg"], stdout=open(f"{job_log}", "a"))
@@ -274,6 +279,7 @@ def send_reports():
         process_messages(7)
 
     write_log("send_reports Ended", job_log)
+
 
 def backup_files():
     write_startup_message("backup_files Started", job_log)
@@ -293,7 +299,8 @@ def backup_files():
     # CVP Transactions backup
     os.rename(f'{backup_dir}/ins_whsl_cvp_transaction.txt.1.gz', f'{backup_dir}/ins_whsl_cvp_transaction.txt.2.gz')
     os.rename(f'{backup_dir}/ins_whsl_cvp_transaction.txt', f'{backup_dir}/ins_whsl_cvp_transaction.txt.1')
-    shutil.make_archive(f'{backup_dir}/ins_whsl_cvp_transaction.txt.1', 'gz', f'{backup_dir}/ins_whsl_cvp_transaction.txt.1')
+    shutil.make_archive(f'{backup_dir}/ins_whsl_cvp_transaction.txt.1', 'gz',
+                        f'{backup_dir}/ins_whsl_cvp_transaction.txt.1')
 
     # Delete temporary files
     os.remove(f"{data_dir}/CVP_Monthly_Data.txt")
@@ -307,10 +314,13 @@ def backup_files():
     shutil.move(f"{data_dir}/CVP_Exception.{curr_date}.csv", f"{backup_dir}/CVP_Exception.{curr_date}.csv")
     shutil.move(f"{data_dir}/CVP_Accounting.{curr_date}.csv", f"{backup_dir}/CVP_Accounting.{curr_date}.csv")
     shutil.make_archive(f"{backup_dir}/CVP_Monthly.txt.{curr_date}", "gz", f"{backup_dir}/CVP_Monthly.txt.{curr_date}")
-    shutil.make_archive(f"{backup_dir}/CVP_Exception.{curr_date}.csv", "gz", f"{backup_dir}/CVP_Exception.{curr_date}.csv")
-    shutil.make_archive(f"{backup_dir}/CVP_Accounting.{curr_date}.csv", "gz", f"{backup_dir}/CVP_Accounting.{curr_date}.csv")
+    shutil.make_archive(f"{backup_dir}/CVP_Exception.{curr_date}.csv", "gz",
+                        f"{backup_dir}/CVP_Exception.{curr_date}.csv")
+    shutil.make_archive(f"{backup_dir}/CVP_Accounting.{curr_date}.csv", "gz",
+                        f"{backup_dir}/CVP_Accounting.{curr_date}.csv")
 
     write_log("backup_files Ended", job_log)
+
 
 def update_statistics():
     write_startup_message("update_statistics Started", job_log)
@@ -332,6 +342,7 @@ def update_statistics():
 
     write_log("update_statistics Ended", job_log)
 
+
 def finalize():
     update_statistics()
     subprocess.run(["rm", f"{data_dir}/dummy"])
@@ -344,44 +355,44 @@ def finalize():
 
 def process_messages(error_code, sql_script=None, problem_database=None):
     if error_code == 0:
-        send_email(sys.argv[0], "Completed Successfully", job_log)
+        send_email(os.path.basename(__file__), "Completed Successfully", job_log)
     elif error_code == 1:
         write_log("ERROR: Setting up UDB environment", job_log)
-        send_email(sys.argv[0], "ERROR: Setting up UDB environment", job_log)
+        send_email(os.path.basename(__file__), "ERROR: Setting up UDB environment", job_log)
         exit(1)
     elif error_code == 2:
         write_log("ERROR: Loading wholesale file", job_log)
-        send_email(sys.argv[0], "ERROR: Loading wholesale file", job_log)
+        send_email(os.path.basename(__file__), "ERROR: Loading wholesale file", job_log)
         exit(1)
     elif error_code == 3:
-        write_log(f"ERROR: Connecting to database {database}", job_log)
+        write_log(f"ERROR: Connecting to database {problem_database}", job_log)
         write_log("Aborting ...", job_log)
-        send_email(sys.argv[0], f"ERROR: Connecting to database {database}", job_log)
+        send_email(os.path.basename(__file__), f"ERROR: Connecting to database {database}", job_log)
         exit(1)
     elif error_code == 4:
         write_log(f"ERROR: Running {sql_script}", job_log)
         write_log("Aborting ...", job_log)
-        send_email(sys.argv[0], f"ERROR: Running {sql_script}", job_log)
+        send_email(os.path.basename(__file__), f"ERROR: Running {sql_script}", job_log)
         exit(1)
     elif error_code == 5:
         write_log("ERROR: Running Process_Wholesale.sql", job_log)
         write_log("Aborting ...", job_log)
-        send_email(sys.argv[0], "ERROR: Running Process_Wholesale.sql", job_log)
+        send_email(os.path.basename(__file__), "ERROR: Running Process_Wholesale.sql", job_log)
         exit(1)
     elif error_code == 6:
         write_log("ERROR: Encrypting the file", job_log)
         write_log("Aborting ...", job_log)
-        send_email(sys.argv[0], "ERROR: Encrypting the file", job_log)
+        send_email(os.path.basename(__file__), "ERROR: Encrypting the file", job_log)
         exit(1)
     elif error_code == 7:
         write_log("ERROR: FTP the file to Axway", job_log)
         write_log("Aborting ...", job_log)
-        send_email(sys.argv[0], "ERROR: FTP the file to Axway", job_log)
+        send_email(os.path.basename(__file__), "ERROR: FTP the file to Axway", job_log)
         exit(1)
     elif error_code == 8:
         write_log("ERROR: FTP the file to W drive", job_log)
         write_log("Aborting ...", job_log)
-        send_email(sys.argv[0], "ERROR: FTP the file to W drive", job_log)
+        send_email(os.path.basename(__file__), "ERROR: FTP the file to W drive", job_log)
         exit(1)
 
 
