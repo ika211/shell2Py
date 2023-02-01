@@ -55,7 +55,7 @@ def wait_for_file():
     file_exists = validate_files()
     if not file_exists:
         process_messages(2)
-    src = os.path.join(home_dir, "CVP", whlsl_file)  # check again
+    src = os.path.join(HOME, "CVP", whlsl_file)
     dst = f'{data_dir}'
     shutil.move(src, dst)
 
@@ -119,12 +119,11 @@ def load_dealers_info():
     else:
         write_log("Extract_Dealers.sql executed successfully", job_log)
 
-    write_startup_message("load_dealers_info Ended", job_log)
-
-    # # load dealer details into dealer-temp
+    # load dealer details into dealer-temp
     # subprocess.run(["db2", "-stvf", "f{sql_dir}/Backup_Dealers.sql", ">", "/apps/ims/df5731b/CVP/Backup_Dealers.log"])
     ## cant create the log file like command shell
-    execute_sql_script(database, userid, password, os.path.join(sql_dir, "Backup_Dealers.sql"))
+    sql_script = os.path.join(sql_dir, "Backup_Dealers.sql")
+    execute_sql_script(database, userid, password, sql_script)
 
     sql_script = os.path.join(sql_dir, "Load_Dealers.sql")
     response = execute_sql_script(database, userid, password, sql_script)
@@ -159,8 +158,6 @@ def backup_transactions():
     if not sql_script_successful:
         write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Backup_Transactions.sql")
-    else:
-        write_log("Backup_Transactions.sql executed successfully", job_log)
 
     write_log("backup_transactions Ended", job_log)
 
@@ -199,8 +196,6 @@ def create_billing_file():
     if not sql_script_successful:
         write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Create_Billing_File.sql")
-    else:
-        write_log("Create_Billing_File.sql executed successfully", job_log)
 
     with open(os.path.join(data_dir, "headers", "CVP_Monthly_Header.txt"), "r") as f:
         header = f.read()
@@ -212,6 +207,7 @@ def create_billing_file():
         f.write(data)
     with open(os.path.join(data_dir, "CVP_monthly.csv"), "w") as f:
         f.write(header)
+        f.write("\n")
         f.write(data)
     with open(os.path.join(data_dir, "headers", "CVP_Exception_Header.txt"), "r") as f:
         header = f.read()
@@ -432,7 +428,7 @@ if __name__ == '__main__':
     steps = ["load_wholesale_file", "load_dealers_info", "process_wholesale_file", "backup_transactions",
              "update_transactions", "create_billing_file", "create_accounting_report", "encrypt_billing_file",
              "send_billing_file", "send_reports", "backup_files"]
-
+    HOME = os.path.expanduser('~')
     initialize()
 
     for i in range(0, len(steps)):
