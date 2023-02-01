@@ -42,12 +42,12 @@ def initialize():
 
 
 def validate_files():
-    # src = '/home/SVC/dcicftp/Wholesale/Inbound/WSMONTHLYUNIT.TXT'
-    # dst = '/apps/ims/df5731b/CVP/WSMONTHLYUNIT.TXT'
-    # shutil.move(src, dst)
-    # if not os.path.isfile(os.path.join(data_dir, whlsl_file)):
-    #     write_log(f"Missing {whlsl_file} file", job_log)
-    #     return False
+    src = '/home/SVC/dcicftp/Wholesale/Inbound/WSMONTHLYUNIT.TXT'
+    dst = '/apps/ims/df5731b/CVP/WSMONTHLYUNIT.TXT'
+    shutil.move(src, dst)
+    if not os.path.isfile(os.path.join(data_dir, whlsl_file)):
+        write_log(f"Missing {whlsl_file} file", job_log)
+        return False
     return True
 
 
@@ -65,12 +65,12 @@ def load_wholesale_file():
     response = check_db2_connection(database, userid, password)
     conn_successful = response["success"]
     if not conn_successful:
-        write_log(response["error_msg"], job_log)
+        write_log(["error_msg"], job_log)
         process_messages(3, problem_database=database)
 
     sql_script = os.path.join(sql_dir, "Load_Wholesale_Monthly.sql")
     response = execute_sql_script(database, userid, password, sql_script)
-    sql_script_successful = response[0]
+    sql_script_successful = response["success"]
     if not sql_script_successful:
         write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Load_Wholesale_Monthly.sql")
@@ -90,7 +90,7 @@ def process_wholesale_file():
 
     sql_script = os.path.join(sql_dir, "Process_Wholesale_Monthly.sql")
     response = execute_sql_script(database, userid, password, sql_script)
-    sql_script_successful = response[0]
+    sql_script_successful = response["success"]
     if not sql_script_successful:
         write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Process_Wholesale_Monthly.sql")
@@ -112,7 +112,7 @@ def load_dealers_info():
     #                 ">", "$$.log"])
     sql_script = os.path.join(sql_dir, "Extract_Dealers.sql")
     response = execute_sql_script_get_output(database, userid, password, sql_script, f"{data_dir}/dealers_infos.txt")
-    sql_script_successful = response[0]
+    sql_script_successful = response["success"]
     if not sql_script_successful:
         write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Extract_Dealers.sql")
@@ -128,7 +128,7 @@ def load_dealers_info():
 
     sql_script = os.path.join(sql_dir, "Load_Dealers.sql")
     response = execute_sql_script(database, userid, password, sql_script)
-    sql_script_successful = response[0]
+    sql_script_successful = response["success"]
     if not sql_script_successful:
         write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Load_Dealers.sql")
@@ -155,7 +155,7 @@ def backup_transactions():
 
     sql_script = os.path.join(sql_dir, "Backup_Transactions.sql")
     response = execute_sql_script(database, userid, password, sql_script)
-    sql_script_successful = response[0]
+    sql_script_successful = response["success"]
     if not sql_script_successful:
         write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Backup_Transactions.sql")
@@ -175,7 +175,7 @@ def update_transactions():
 
     sql_script = os.path.join(sql_dir, "Update_Transactions.sql")
     response = execute_sql_script(database, userid, password, sql_script)
-    sql_script_successful = response[0]
+    sql_script_successful = response["success"]
     if not sql_script_successful:
         write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Update_Transactions.sql")
@@ -195,16 +195,32 @@ def create_billing_file():
 
     sql_script = os.path.join(sql_dir, "Create_Billing_File.sql")
     response = execute_sql_script(database, userid, password, sql_script)
-    sql_script_successful = response[0]
+    sql_script_successful = response["success"]
     if not sql_script_successful:
         write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Create_Billing_File.sql")
     else:
         write_log("Create_Billing_File.sql executed successfully", job_log)
 
-    #
-    # code missing
-    #
+    with open(os.path.join(data_dir, "headers", "CVP_Monthly_Header.txt"), "r") as f:
+        header = f.read()
+    with open(os.path.join(data_dir, "CVP_Monthly_Data.txt"), "r") as f:
+        data = f.read()
+    with open(os.path.join(data_dir, "CVP_Monthly.txt"), "w") as f:
+        f.write(header)
+        f.write("\n")
+        f.write(data)
+    with open(os.path.join(data_dir, "CVP_monthly.csv"), "w") as f:
+        f.write(header)
+        f.write(data)
+    with open(os.path.join(data_dir, "headers", "CVP_Exception_Header.txt"), "r") as f:
+        header = f.read()
+    with open(os.path.join(data_dir, "CVP_Exception_Data"), "r") as f:
+        data = f.read()
+    with open(os.path.join(data_dir, "CVP_Exception"), "w") as f:
+        f.write(header)
+        f.write("\n")
+        f.write(data)
 
     write_log("create_billing_file Ended", job_log)
 
@@ -219,14 +235,21 @@ def create_accounting_report():
 
     sql_script = os.path.join(sql_dir, "Create_Accounting_Report.sql")
     response = execute_sql_script(database, userid, password, sql_script)
-    sql_script_successful = response[0]
+    sql_script_successful = response["success"]
     if not sql_script_successful:
         write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Create_Accounting_Report.sql")
     else:
         write_log("Create_Accounting_Report.sql executed successfully", job_log)
 
-    # code missing ?
+    with open(os.path.join(data_dir, "headers", "CVP_Accounting_Header.txt"), "r") as f:
+        header = f.read()
+    with open(os.path.join(data_dir, "CVP_Accounting_Data"), "r") as f:
+        data = f.read()
+    with open(os.path.join(data_dir, "CVP_Accounting"), "w") as f:
+        f.write(header)
+        f.write("\n")
+        f.write(data)
 
     write_log("create_accounting_report Ended", job_log)
 
@@ -333,7 +356,7 @@ def update_statistics():
 
     sql_script = os.path.join(sql_dir, "Update_Statistics.sql")
     response = execute_sql_script(database, userid, password, sql_script)
-    sql_script_successful = response[0]
+    sql_script_successful = response["success"]
     if not sql_script_successful:
         write_log(response["error_msg"], job_log)
         process_messages(4, sql_script="Update_Statistics.sql")
